@@ -2,7 +2,7 @@
 
 ## 👥 Team Members
 Isaac Toffel (Project Lead)  
-Alan Chau
+Alan Chau  
 Julian Antropow de la Hoz  
 Armaan Gupta  
 Lucas Azout  
