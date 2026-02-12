@@ -83,7 +83,7 @@ Automated API collection scripts with:
 - Scheduling capability  
 
 ### Web Application
-Interactive dashboard (Streamlit or Flask) that displays:
+Interactive dashboard (Streamlit) that displays:
 - Historical analysis  
 - Visualizations  
 - Model predictions  
@@ -124,7 +124,7 @@ fed-rates-financial-stocks/
 │   ├── data_pipeline.py   # API data collection  
 │   ├── features.py        # Feature engineering  
 │   ├── model.py           # Model training & evaluation  
-│   └── app.py             # Streamlit/Flask dashboard  
+│   └── app.py             # Streamlit dashboard  
 │  
 ├── notebooks/             # Exploratory analysis  
 ├── data/                  # Raw and processed data (ignored)  
@@ -223,7 +223,7 @@ The dashboard allows users to:
 - numpy  
 - scikit-learn  
 - requests  
-- Streamlit or Flask  
+- Streamlit 
 - PostgreSQL or MongoDB  
 
 ---
