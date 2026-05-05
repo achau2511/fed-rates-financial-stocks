@@ -26,7 +26,7 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD"),
 }
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "best_model.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "best_model.pkl")
 
 TICKERS = ["JPM", "GS", "BAC", "WFC", "C", "MS"]
 
