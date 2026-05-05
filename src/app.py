@@ -1,24 +1,3 @@
-"""
-Purpose:
-Interactive web dashboard for exploring historical data
-and generating predictions using the trained model.
-
-Built with Streamlit.
-
-Responsibilities:
-- Load processed data and trained model
-- Visualize rate decisions and stock performance
-- Allow users to test hypothetical scenarios
-- Display model predictions and insights
-"""
-
-
-"""
-app.py
-Interactive Streamlit dashboard for exploring Fed rate changes,
-stock performance, and ML model predictions.
-"""
-
 import os
 import pickle
 import psycopg2
@@ -154,6 +133,7 @@ if page == "🏠 Overview":
     )
     fig.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("The Fed Funds Rate has cycled through three major regimes since 2000: near-zero rates post-2008, a rapid hiking campaign in 2022–2023, and gradual cuts since. Each regime shift had distinct effects on financial sector stocks.")
 
     # Recent FOMC meetings table
     st.subheader("Recent FOMC Meetings")
@@ -163,6 +143,7 @@ if page == "🏠 Overview":
     recent["rate"]      = recent["rate"].apply(lambda x: f"{x:.2f}%")
     recent.columns      = ["Date", "Rate", "Change", "Direction"]
     st.dataframe(recent.set_index("Date"), use_container_width=True)
+    st.caption("Rate decisions often come in streaks — the Fed rarely reverses course after a single meeting. Sustained hold periods typically signal uncertainty rather than stability.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -213,6 +194,7 @@ elif page == "📊 Rate History":
         margin=dict(l=0, r=0, t=30, b=0)
     )
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("Hike cycles (red) and cut cycles (green) reflect the Fed's response to inflation and recession risk respectively. Cuts tend to cluster at crisis inflection points — 2001, 2008, 2020.")
 
     # Change distribution
     st.subheader("Distribution of Rate Changes at FOMC Meetings")
@@ -223,6 +205,7 @@ elif page == "📊 Rate History":
     )
     fig2.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
     st.plotly_chart(fig2, use_container_width=True)
+    st.caption("25 bps moves are by far the most common — the Fed's preferred \"measured\" step. Larger moves (50–75 bps) are rare and typically signal emergency conditions or aggressive inflation-fighting.")
 
     # Raw FOMC table
     with st.expander("View all FOMC meetings in range"):
@@ -282,6 +265,7 @@ elif page == "📉 Stock Performance":
             margin=dict(l=0, r=0, t=30, b=0)
         )
         st.plotly_chart(fig, use_container_width=True)
+        st.caption(f"Green dots indicate {ticker} outperformed SPY in the 30 days after the FOMC meeting; red dots indicate underperformance. A win rate above 50% suggests the stock has a positive post-FOMC edge over the broader market.")
 
         # Stock price chart
         st.subheader(f"{ticker} Price History")
@@ -298,6 +282,7 @@ elif page == "📉 Stock Performance":
         ))
         fig2.update_layout(height=350, margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig2, use_container_width=True)
+        st.caption(f"Yellow markers highlight FOMC meeting dates on {ticker}'s price history — useful for spotting whether rate decisions aligned with major price inflection points.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -364,6 +349,7 @@ elif page == "🤖 Model Predictions":
     )
     fig.update_layout(height=350, margin=dict(l=0, r=0, t=10, b=0), coloraxis_showscale=False)
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("Pre-meeting momentum and volatility rank as the top predictors — suggesting that how a stock was already moving matters more than the Fed's actual decision. The rate level regime adds context about the broader macro environment.")
 
     # Predictions table
     st.subheader("Predictions by Meeting & Ticker")
@@ -481,3 +467,4 @@ elif page == "🔮 Scenario Testing":
     ))
     fig.update_layout(height=350, margin=dict(l=40, r=40, t=40, b=10))
     st.plotly_chart(fig, use_container_width=True)
+    st.caption("The gauge reflects the model's confidence that the selected stock will outperform SPY over the 30 days following the hypothetical FOMC meeting. Values above 60% indicate a strong positive signal; below 40% suggest likely underperformance. The model weighs pre-meeting momentum and volatility most heavily.")
