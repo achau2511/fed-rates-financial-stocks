@@ -206,7 +206,7 @@ if page == "🏠 Overview":
     col1.metric("Daily Rate Observations", f"{len(fed):,}")
     col2.metric("FOMC Meetings", f"{len(fomc):,}")
     col3.metric("Stock Price Rows", f"{len(stocks):,}")
-    col4.metric("Feature Rows", f"{len(features):,}")
+    col4.metric("FOMC Event-Stock Pairs", f"{len(features):,}")
 
     st.markdown("---")
 
@@ -224,6 +224,7 @@ if page == "🏠 Overview":
     # Recent FOMC meetings table
     st.subheader("Recent FOMC Meetings")
     recent = fomc.tail(8).sort_values("date", ascending=False).copy()
+    recent["date"]      = pd.to_datetime(recent["date"]).dt.strftime("%Y-%m-%d")
     recent["Direction"] = recent["change_bp"].apply(direction_label)
     recent["change_bp"] = recent["change_bp"].apply(lambda x: f"{x:+.0f} bps")
     recent["rate"]      = recent["rate"].apply(lambda x: f"{x:.2f}%")
@@ -293,7 +294,46 @@ if page == "🏠 Overview":
     win_display["avg_rel_return"] = win_display["avg_rel_return"].apply(lambda x: f"{x*100:+.2f}%")
     win_display.columns = ["FOMC Meetings", "Outperformed SPY", "Avg 30d vs SPY", "Win Rate"]
     st.dataframe(win_display[["FOMC Meetings", "Outperformed SPY", "Win Rate", "Avg 30d vs SPY"]], use_container_width=True)
-    st.caption("A win rate above 50% suggests the stock has historically had a positive edge over SPY in the 30 days following an FOMC meeting. Sample sizes are small — interpret with care.")
+    st.caption("A win rate above 50% suggests the stock has historically had a positive edge over SPY in the 30 days following an FOMC meeting. Sample sizes are small — interpret with care. Win rates are calculated across all 31 historical FOMC meetings in the dataset, not just the held-out test set.")
+
+    # Latest Signal — model's prediction for the most recent FOMC meeting
+    latest_payload = load_model()
+    if latest_payload is not None and not features.empty:
+        latest_model        = latest_payload["model"]
+        latest_feature_cols = latest_payload["feature_cols"]
+        latest_cat_mappings = latest_payload["cat_mappings"]
+
+        latest_date = features["fomc_date"].max()
+        latest_rows = features[features["fomc_date"] == latest_date].copy()
+
+        encoded = latest_rows.copy()
+        for col, mapping in latest_cat_mappings.items():
+            encoded[col] = encoded[col].map(mapping)
+        encoded = encoded.dropna(subset=latest_feature_cols)
+
+        if not encoded.empty:
+            st.markdown("---")
+            st.subheader("Latest Signal")
+            st.markdown(f"**Most recent FOMC meeting in dataset:** {pd.to_datetime(latest_date).strftime('%Y-%m-%d')}")
+
+            X_latest = encoded[latest_feature_cols].astype(float)
+            probs    = latest_model.predict_proba(X_latest)[:, 1]
+
+            signal = latest_rows.loc[encoded.index].copy()
+            signal["P(Outperform)"]  = [f"{p:.1%}" for p in probs]
+            signal["Classification"] = ["Outperform" if p >= 0.5 else "Underperform" for p in probs]
+            signal["change_bp"]      = signal["change_bp"].apply(lambda x: f"{x:+.0f}")
+
+            signal_cols = ["ticker", "direction", "change_bp", "P(Outperform)", "Classification"]
+            st.dataframe(
+                signal[signal_cols].rename(columns={
+                    "ticker": "Ticker",
+                    "direction": "Direction",
+                    "change_bp": "Change (bps)",
+                }).set_index("Ticker"),
+                use_container_width=True,
+            )
+            st.caption("Based on the most recent FOMC meeting in the dataset. These are in-sample predictions — the model was trained on this event.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -360,6 +400,7 @@ elif page == "📊 Rate History":
     # Raw FOMC table
     with st.expander("View all FOMC meetings in range"):
         show = fomc_filtered.copy().sort_values("date", ascending=False)
+        show["date"]      = pd.to_datetime(show["date"]).dt.strftime("%Y-%m-%d")
         show["Direction"] = show["change_bp"].apply(direction_label)
         st.dataframe(show, use_container_width=True)
 
@@ -515,14 +556,17 @@ elif page == "🤖 Model Predictions":
         padded[:cm.shape[0], :cm.shape[1]] = cm
         cm = padded
 
+    # Color-code per cell: TN/TP (correct) green, FP/FN (errors) red
+    correctness = [[1, 0], [0, 1]]   # rows: actual, cols: predicted
     cm_fig = go.Figure(data=go.Heatmap(
-        z=cm,
+        z=correctness,
         x=["Predicted Underperform", "Predicted Outperform"],
         y=["Actual Underperform", "Actual Outperform"],
         text=cm,
         texttemplate="%{text}",
         textfont={"size": 18, "color": "white"},
-        colorscale=[[0, "#0F172A"], [1, "#1E2761"]],
+        colorscale=[[0, "#EF4444"], [1, "#22C55E"]],
+        zmin=0, zmax=1,
         showscale=False,
     ))
     cm_fig.update_layout(height=320, margin=dict(l=0, r=0, t=10, b=0))
@@ -585,6 +629,7 @@ elif page == "🤖 Model Predictions":
     show["Correct"]   = (show["predicted"] == show["outperformed"]).apply(lambda x: "✓" if x else "✗")
     show["P(Outperform)"] = show["proba"].apply(lambda x: f"{x:.1%}")
     show["change_bp"]     = show["change_bp"].apply(lambda x: f"{x:+.0f}")
+    show["fomc_date"]     = pd.to_datetime(show["fomc_date"]).dt.strftime("%Y-%m-%d")
 
     cols_to_show = ["fomc_date", "ticker", "direction_label", "change_bp", "Predicted", "Actual", "Correct", "P(Outperform)"]
     st.dataframe(show[cols_to_show].rename(columns={
@@ -688,9 +733,9 @@ elif page == "🔮 Scenario Testing":
             "axis": {"range": [0, 100]},
             "bar": {"color": "#1E2761"},
             "steps": [
-                {"range": [0, 40],  "color": "#FEE2E2"},
-                {"range": [40, 60], "color": "#FEF9C3"},
-                {"range": [60, 100],"color": "#DCFCE7"},
+                {"range": [0, 40],  "color": "#7F1D1D"},
+                {"range": [40, 60], "color": "#78350F"},
+                {"range": [60, 100],"color": "#14532D"},
             ],
             "threshold": {
                 "line": {"color": "#1E2761", "width": 4},
