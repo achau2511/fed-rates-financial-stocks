@@ -556,8 +556,9 @@ elif page == "🤖 Model Predictions":
         padded[:cm.shape[0], :cm.shape[1]] = cm
         cm = padded
 
-    # Color-code per cell: TN/TP (correct) green, FP/FN (errors) red
-    correctness = [[1, 0], [0, 1]]   # rows: actual, cols: predicted
+    # Color-code per cell: TN/TP (correct) green, FP/FN (errors) red.
+    # Top row (FN, TP) → [red, green]; bottom row (TN, FP) → [green, red].
+    correctness = [[0, 1], [1, 0]]
     cm_fig = go.Figure(data=go.Heatmap(
         z=correctness,
         x=["Predicted Underperform", "Predicted Outperform"],
